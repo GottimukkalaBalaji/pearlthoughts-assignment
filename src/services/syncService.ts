@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Task, SyncQueueItem, SyncResult, BatchSyncRequest, BatchSyncResponse } from '../types';
+import { Task, SyncQueueItem, SyncResult, BatchSyncResponse } from '../types';
 import { Database } from '../db/database';
 import { TaskService } from './taskService';
 

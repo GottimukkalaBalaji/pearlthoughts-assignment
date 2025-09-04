@@ -1,40 +1,39 @@
 import { Router, Request, Response } from 'express';
+import { Database } from '../db/database';
 import { TaskService } from '../services/taskService';
 import { SyncService } from '../services/syncService';
-import { Database } from '../db/database';
 
 export function createTaskRouter(db: Database): Router {
   const router = Router();
   const taskService = new TaskService(db);
   const syncService = new SyncService(db, taskService);
-  
-  // Set up the sync service in task service for integration
-  taskService.setSyncService(syncService);
 
-  // Get all tasks
-  router.get('/', async (req: Request, res: Response) => {
+  // GET /api/tasks - Get all tasks
+  router.get('/', async (_req: Request, res: Response) => {
     try {
       const tasks = await taskService.getAllTasks();
-      res.json(tasks);
+      return res.json(tasks);
     } catch (error) {
-      res.status(500).json({ error: 'Failed to fetch tasks' });
+      console.error('Error fetching tasks:', error);
+      return res.status(500).json({ error: 'Failed to fetch tasks' });
     }
   });
 
-  // Get single task
+  // GET /api/tasks/:id - Get a single task
   router.get('/:id', async (req: Request, res: Response) => {
     try {
       const task = await taskService.getTask(req.params.id);
       if (!task) {
         return res.status(404).json({ error: 'Task not found' });
       }
-      res.json(task);
+      return res.json(task);
     } catch (error) {
-      res.status(500).json({ error: 'Failed to fetch task' });
+      console.error('Error fetching task:', error);
+      return res.status(500).json({ error: 'Failed to fetch task' });
     }
   });
 
-  // Create task
+  // POST /api/tasks - Create a new task
   router.post('/', async (req: Request, res: Response) => {
     try {
       console.log('POST /api/tasks - Request body:', JSON.stringify(req.body, null, 2));
@@ -73,7 +72,7 @@ export function createTaskRouter(db: Database): Router {
       const newTask = await taskService.createTask(taskData);
       console.log('Task created successfully:', JSON.stringify(newTask, null, 2));
       
-      res.status(201).json(newTask);
+      return res.status(201).json(newTask);
     } catch (error) {
       console.error('POST /api/tasks - Error occurred:', error);
       console.error('Error details:', {
@@ -84,7 +83,7 @@ export function createTaskRouter(db: Database): Router {
       
       // Return more specific error information
       const errorMessage = (error as Error).message || 'Failed to create task';
-      res.status(500).json({ 
+      return res.status(500).json({ 
         error: errorMessage,
         details: process.env.NODE_ENV === 'development' ? (error as Error).stack : undefined
       });
@@ -132,28 +131,27 @@ export function createTaskRouter(db: Database): Router {
         }
         updates.completed = completed;
       }
-
+      
       // Check if at least one field is being updated
       if (Object.keys(updates).length === 0) {
         return res.status(400).json({ 
-          error: 'At least one field (title, description, or completed) must be provided' 
+          error: 'At least one field (title, description, completed) must be provided for update' 
         });
       }
-
+      
       // Step 3: Update the task using TaskService
       const updatedTask = await taskService.updateTask(taskId, updates);
       
-      // Step 4: Handle not found case
       if (!updatedTask) {
         return res.status(404).json({ error: 'Task not found' });
       }
-
-      // Step 5: Return the updated task
-      res.json(updatedTask);
+      
+      // Step 4: Return the updated task
+      return res.json(updatedTask);
       
     } catch (error) {
       console.error('Error updating task:', error);
-      res.status(500).json({ error: 'Failed to update task' });
+      return res.status(500).json({ error: 'Failed to update task' });
     }
   });
 
@@ -163,25 +161,19 @@ export function createTaskRouter(db: Database): Router {
       // Step 1: Get task ID from URL parameters
       const taskId = req.params.id;
       
-      // Step 2: Validate that ID is provided
-      if (!taskId || taskId.trim().length === 0) {
-        return res.status(400).json({ error: 'Task ID is required' });
-      }
-
-      // Step 3: Delete the task using TaskService (soft delete)
-      const deleted = await taskService.deleteTask(taskId);
+      // Step 2: Delete the task using TaskService (soft delete)
+      const success = await taskService.deleteTask(taskId);
       
-      // Step 4: Handle not found case
-      if (!deleted) {
+      if (!success) {
         return res.status(404).json({ error: 'Task not found' });
       }
-
-      // Step 5: Return success response (204 No Content)
-      res.status(204).send(); // No content for successful delete
+      
+      // Step 3: Return success message
+      return res.json({ message: 'Task deleted successfully' });
       
     } catch (error) {
       console.error('Error deleting task:', error);
-      res.status(500).json({ error: 'Failed to delete task' });
+      return res.status(500).json({ error: 'Failed to delete task' });
     }
   });
 

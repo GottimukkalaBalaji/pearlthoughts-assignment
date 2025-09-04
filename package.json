@@ -1,12 +1,16 @@
 {
-  "name": "backend",
+  "name": "task-sync-api",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Task Sync API with offline capabilities",
+  "main": "dist/server.js",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "scripts": {
     "dev": "nodemon --watch src --exec tsx src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
+    "postbuild": "cp -r src/db/migrations dist/db/ 2>/dev/null || true",
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
@@ -18,7 +22,7 @@
     "type": "git",
     "url": "git+https://github.com/senguttuvang/backend-interview-challenge.git"
   },
-  "keywords": [],
+  "keywords": ["task-management", "sync-api", "offline-first", "sqlite"],
   "author": "",
   "license": "ISC",
   "type": "commonjs",

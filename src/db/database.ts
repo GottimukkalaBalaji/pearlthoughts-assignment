@@ -1,6 +1,4 @@
 import sqlite3 from 'sqlite3';
-import { promisify } from 'util';
-import { Task, SyncQueueItem } from '../types';
 import * as fs from 'fs';
 import * as path from 'path';
 

@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: task-sync-api
+    env: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: DATABASE_URL
+        value: /opt/render/project/src/data/tasks.sqlite3
+      - key: SYNC_BATCH_SIZE
+        value: 50
+      - key: SYNC_RETRY_ATTEMPTS
+        value: 3
+      - key: API_BASE_URL
+        generateValue: true

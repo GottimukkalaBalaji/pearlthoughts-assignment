@@ -1,37 +1,43 @@
 import { Router, Request, Response } from 'express';
+import { Database } from '../db/database';
 import { SyncService } from '../services/syncService';
 import { TaskService } from '../services/taskService';
-import { Database } from '../db/database';
 
 export function createSyncRouter(db: Database): Router {
   const router = Router();
   const taskService = new TaskService(db);
   const syncService = new SyncService(db, taskService);
 
-  // Trigger manual sync
-  router.post('/sync', async (req: Request, res: Response) => {
+  // Manual sync endpoint
+  router.post('/sync', async (_req: Request, res: Response) => {
     try {
       // Step 1: Check connectivity first
       const isOnline = await syncService.checkConnectivity();
       if (!isOnline) {
-        return res.status(503).json({ 
+        return res.status(503).json({
           error: 'Service unavailable - server is not reachable',
           success: false,
           synced_items: 0,
-          failed_items: 0
+          failed_items: 0,
+          errors: [{
+            task_id: '',
+            operation: 'connectivity',
+            error: 'Server is not reachable',
+            timestamp: new Date().toISOString()
+          }]
         });
       }
 
-      // Step 2: Call syncService.sync()
+      // Step 2: Perform sync operation
       const syncResult = await syncService.sync();
-
-      // Step 3: Return sync result
+      
+      // Step 3: Return appropriate status code
       const statusCode = syncResult.success ? 200 : 207; // 207 = Multi-Status (partial success)
-      res.status(statusCode).json(syncResult);
+      return res.status(statusCode).json(syncResult);
       
     } catch (error) {
-      console.error('Sync failed:', error);
-      res.status(500).json({ 
+      console.error('Manual sync failed:', error);
+      return res.status(500).json({
         error: 'Sync operation failed',
         success: false,
         synced_items: 0,
@@ -40,24 +46,24 @@ export function createSyncRouter(db: Database): Router {
           task_id: '',
           operation: 'sync',
           error: (error as Error).message,
-          timestamp: new Date()
+          timestamp: new Date().toISOString()
         }]
       });
     }
   });
 
   // Check sync status
-  router.get('/status', async (req: Request, res: Response) => {
+  router.get('/status', async (_req: Request, res: Response) => {
     try {
       // Step 1: Get sync status summary
       const status = await syncService.getSyncStatus();
 
       // Step 2: Return status summary
-      res.json(status);
+      return res.json(status);
       
     } catch (error) {
       console.error('Failed to get sync status:', error);
-      res.status(500).json({ 
+      return res.status(500).json({ 
         error: 'Failed to retrieve sync status',
         pending_sync_count: 0,
         last_sync_timestamp: null,
@@ -144,11 +150,11 @@ export function createSyncRouter(db: Database): Router {
       };
       
       console.log(`Batch sync completed: ${response.successful} successful, ${response.failed} failed`);
-      res.json(response);
+      return res.json(response);
       
     } catch (error) {
       console.error('Batch sync error:', error);
-      res.status(500).json({ 
+      return res.status(500).json({ 
         error: 'Batch sync processing failed',
         details: (error as Error).message
       });
@@ -156,8 +162,21 @@ export function createSyncRouter(db: Database): Router {
   });
 
   // Health check endpoint
-  router.get('/health', async (req: Request, res: Response) => {
-    res.json({ status: 'ok', timestamp: new Date() });
+  router.get('/health', async (_req: Request, res: Response) => {
+    try {
+      return res.json({
+        status: 'ok',
+        timestamp: new Date().toISOString(),
+        service: 'sync-api'
+      });
+    } catch (error) {
+      console.error('Health check failed:', error);
+      return res.status(500).json({
+        status: 'error',
+        timestamp: new Date().toISOString(),
+        error: (error as Error).message
+      });
+    }
   });
 
   return router;
